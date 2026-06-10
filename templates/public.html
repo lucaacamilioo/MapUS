@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapUS - Navigation</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <nav class="top-navbar">
+        <div class="nav-brand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Map<span>US</span>
+        </div>
+        <div class="nav-links">
+            <button id="nav-about-btn">About</button>
+        </div>
+    </nav>
+
+    <div class="modal-overlay" id="about-modal-overlay">
+        <div class="about-modal">
+            <h2>MapUS — UGM Campus Navigation</h2>
+            <div class="modal-divider"></div>
+
+            <h3>About</h3>
+            <p>MapUS is a web-based campus navigation application for Universitas Gadjah Mada (UGM), Yogyakarta,
+                Indonesia. It helps students, faculty, staff, and visitors find the most efficient walking route between
+                locations across the Bulaksumur campus.</p>
+
+            <h3>How it works</h3>
+            <p>The application models the campus as a weighted graph. Dijkstra's shortest path algorithm computes
+                optimal routes across campus pathways, rendered visually on an interactive map powered by Leaflet.js and
+                OpenStreetMap.</p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li>Shortest path computation between any two campus locations</li>
+                <li>Interactive map with buildings, pathways, and points of interest</li>
+                <li>Estimated walking time and total distance for each route</li>
+                <li>Search functionality for locating buildings by name</li>
+            </ul>
+
+            <h3>Built with</h3>
+            <p>Python · Flask · SQLite · Leaflet.js · OpenStreetMap · JavaScript</p>
+
+            <h3>Author</h3>
+            <p>Developed by Camilio as a final project for CS50, Harvard University's Introduction to Computer Science
+                course.</p>
+
+            <div class="modal-divider"></div>
+
+            <div class="social-links">
+                <a href="https://instagram.com/novenargani" target="_blank" title="Instagram">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                </a>
+                <a href="https://github.com/lucaacamilioo" target="_blank" title="GitHub, username='lucaacamilioo'">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                        </path>
+                    </svg>
+                </a>
+                <a href="https://cs50.harvard.edu/x/" target="_blank" title="CS50 on edX, username='novenargani'">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle"
+                            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+                            font-weight="800" font-size="11" letter-spacing="-0.5">edX</text>
+                    </svg>
+                </a>
+            </div>
+
+            <button class="close-modal-btn" id="close-modal-btn">Close</button>
+        </div>
+    </div>
+
+    <div class="navigation-sidebar" id="main-sidebar">
+
+        <div class="search-container" id="view-search">
+            <div class="search-wrapper">
+                <input type="text" id="search-input" class="search-input" placeholder="Search UGM Campus..."
+                    autocomplete="off" style="flex: 1;">
+                <button id="minimize-btn" class="toggle-collapse-btn" title="Toggle Panel">▼</button>
+            </div>
+
+            <div class="fast-access-container" id="fast-access-panel">
+                <button class="fast-access-btn" data-node="329">🏢 FMIPA</button>
+                <button class="fast-access-btn" data-node="330">🏢 Biology</button>
+                <button class="fast-access-btn" data-node="287">🏢 Geography</button>
+            </div>
+
+            <ul id="search-results" class="search-results"></ul>
+        </div>
+
+        <div class="location-card" id="view-location-card">
+            <p class="location-card-label" id="card-category">Building</p>
+            <h2 id="card-title">Building Name</h2>
+            <div class="button-row">
+                <button class="btn btn-primary" id="btn-directions">🗺️ Directions</button>
+                <button class="btn btn-secondary" id="btn-start-nav">🧭 Start</button>
+            </div>
+        </div>
+
+        <div class="directions-panel" id="view-directions">
+            <button class="back-btn" id="btn-back">← Back to map</button>
+            <div class="routing-inputs">
+                <input type="text" id="start-search" class="search-input" placeholder="Search starting point..."
+                    autocomplete="off">
+                <div class="routing-dot">
+                    <span></span>
+                    <div class="routing-dot-line"></div>
+                    <span class="dot-end"></span>
+                </div>
+                <ul id="start-results" class="search-results"></ul>
+                <input type="text" id="end-node-display" class="dest-input" readonly>
+            </div>
+        </div>
+
+        <div id="route-summary" class="route-summary-box">
+            <div id="route-output"></div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="{{ url_for('static', filename='javascript.js') }}"></script>
+</body>
+
+</html>

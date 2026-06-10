@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapUS - Ingestion Interface</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* Floating Admin Panel Design Constraints */
+        .admin-panel {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            width: 220px;
+        }
+
+        .admin-panel h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        .mode-option {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .mode-option input {
+            margin-right: 10px;
+        }
+
+        .status-box {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #555;
+            background: #eee;
+            padding: 8px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="admin-panel" id="main-admin-panel">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; margin-bottom: 10px; padding-bottom: 5px;">
+            <h3 style="margin: 0; border: none; padding: 0;">MapUS Data Ingestion</h3>
+            <button id="toggle-panel-btn"
+                style="cursor: pointer; font-weight: bold; padding: 2px 6px; border: 1px solid #999; border-radius: 4px;">—</button>
+        </div>
+
+        <div id="panel-controls">
+            <label class="mode-option">
+                <input type="radio" name="tool-mode" value="add_node" checked>
+                <span>1. Plot Nodes (Dots)</span>
+            </label>
+            <label class="mode-option">
+                <input type="radio" name="tool-mode" value="link_edge">
+                <span>2. Connect Edges (Lines)</span>
+            </label>
+            <label class="mode-option">
+                <input type="radio" name="tool-mode" value="delete_node">
+                <span>3. Delete Nodes (Eraser)</span>
+            </label>
+
+            <div class="status-box" id="status-display">
+                Mode: Active plotting. Click map to generate node waypoints.
+            </div>
+
+            <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <h4 style="margin: 0 0 10px 0;">Test Routing Engine</h4>
+                <select id="start-node" style="width: 100%; margin-bottom: 5px; padding: 5px;">
+                    <option value="">Select Start Location...</option>
+                </select>
+                <select id="end-node" style="width: 100%; margin-bottom: 10px; padding: 5px;">
+                    <option value="">Select Destination...</option>
+                </select>
+                <button id="find-route-btn"
+                    style="width: 100%; padding: 6px; cursor: pointer; font-weight: bold;">Calculate Path</button>
+                <div id="route-output" style="margin-top: 10px; font-weight: bold; font-size: 0.9em; color: #0056b3;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Set hard bounds based on your converted Google Earth coordinate matrix
+        // var southWest = L.latLng(-7.767397, 110.375359);
+        // var northEast = L.latLng(-7.765711, 110.378256);
+        // var bounds = L.latLngBounds(southWest, northEast);
+
+        // var map = L.map('map', {
+        //     center: [-7.766554, 110.376808], // Cluster center point
+        //     zoom: 18,
+        //     minZoom: 16,
+        //     maxZoom: 19,
+        //     maxBounds: bounds,
+        //     maxBoundsViscosity: 1.0
+        // });
+
+        // Expanded bounding box for the wider UGM cluster
+        var southWest = L.latLng(-7.771000, 110.372000); // Pushed further South and West
+        var northEast = L.latLng(-7.762000, 110.382000); // Pushed further North and East
+        var bounds = L.latLngBounds(southWest, northEast);
+
+        var map = L.map('map', {
+            center: [-7.766554, 110.376808],
+            zoom: 18,
+            minZoom: 15, // You may also want to drop this to 15 if you need to zoom out further
+            maxZoom: 19,
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // --- PIPELINE RUNTIME STATE ---
+        // --- UI TOGGLE LOGIC ---
+        L.DomEvent.disableClickPropagation(document.getElementById('main-admin-panel'));
+
+        // Minimize/Maximize the panel
+        document.getElementById('toggle-panel-btn').addEventListener('click', function () {
+            var controls = document.getElementById('panel-controls');
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+                this.innerText = '—'; // Change button to minus
+            } else {
+                controls.style.display = 'none';
+                this.innerText = '+'; // Change button to plus
+            }
+        });
+
+        var activeMode = 'add_node';
+        var sourceNode = null; // Holds Node A coordinate metadata during edge pairing
+
+        // UI Listener for mode state toggles
+        document.querySelectorAll('input[name="tool-mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                activeMode = e.target.value;
+                sourceNode = null; // Clear selections to prevent mismatched links
+
+                var display = document.getElementById('status-display');
+                if (activeMode === 'add_node') {
+                    display.innerText = "Mode: Active plotting. Click map to generate node waypoints.";
+                } else if (activeMode === 'link_edge') {
+                    display.innerText = "Mode: Connect paths. Click Node A, then Node B.";
+                } else if (activeMode === 'delete_node') {
+                    display.innerText = "Mode: Eraser. Click any node to permanently delete it.";
+                }
+            });
+        });
+
+        // --- ASYNC DATA INGESTION LOOPS ---
+
+        // Pull existing data array down from CS50 SQLite on initialization
+        fetch('/api/nodes')
+            .then(res => res.json())
+            .then(nodeList => {
+                nodeList.forEach(node => {
+                    renderActiveNodeMarker(node.id, node.lat, node.lng);
+                });
+            });
+
+        // IMMEDIATELY BELOW IT: Pull existing edges to redraw the red lines
+        fetch('/api/edges')
+            .then(res => res.json())
+            .then(edgeList => {
+                edgeList.forEach(edge => {
+                    L.polyline([
+                        [edge.a_lat, edge.a_lng],
+                        [edge.b_lat, edge.b_lng]
+                    ], {
+                        color: '#d9534f',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                });
+            });
+
+        // Click Handler for generating raw physical nodes
+        map.on('click', function (e) {
+            if (activeMode !== 'add_node') return;
+
+            var lat = e.latlng.lat.toFixed(6);
+            var lng = e.latlng.lng.toFixed(6);
+
+            fetch('/admin/add-node', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: lat, lng: lng })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.id) {
+                        renderActiveNodeMarker(data.id, lat, lng);
+                    } else {
+                        alert("Ingestion failure: " + data.error);
+                    }
+                });
+        });
+
+        // Dynamic element mapper injection
+        function renderActiveNodeMarker(id, lat, lng) {
+            var nodeMarker = L.marker([lat, lng]).addTo(map);
+            nodeMarker.bindTooltip("Node " + id, { permanent: false, direction: 'top' });
+
+            nodeMarker.on('click', function (event) {
+                L.DomEvent.stopPropagation(event);
+
+                // --- LINKING MODE ---
+                if (activeMode === 'link_edge') {
+                    if (sourceNode === null) {
+                        sourceNode = { id: id, lat: lat, lng: lng };
+                        nodeMarker.bindPopup("<b>Node " + id + " selected as origin.</b><br>Select next target node.").openPopup();
+                    } else {
+                        if (sourceNode.id === id) return; // Prevent linking a node to itself
+
+                        var targetPayload = { node_a_id: sourceNode.id, node_b_id: id };
+
+                        fetch('/admin/add-edge', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(targetPayload)
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.weight) {
+                                    // Draw the red line for the new connection
+                                    L.polyline([[sourceNode.lat, sourceNode.lng], [lat, lng]], { color: '#d9534f', weight: 4 }).addTo(map);
+                                    sourceNode = null;
+                                    nodeMarker.closePopup();
+                                } else {
+                                    alert("Error: " + data.error);
+                                }
+                            });
+                    }
+                }
+                // --- DELETION MODE ---
+                else if (activeMode === 'delete_node') {
+                    // Force the user to confirm so they don't accidentally destroy their graph via misclick
+                    if (confirm("WARNING: Destroying Node " + id + " will also destroy all pathways connected to it. Proceed?")) {
+                        fetch('/admin/delete-node', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ node_id: id })
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (!data.error) {
+                                    console.log(data.message);
+                                    // The most computationally safe way to clear orphaned red lines from the screen 
+                                    // is to force the browser to pull a fresh, clean graph from the database.
+                                    location.reload();
+                                } else {
+                                    alert("Deletion failed: " + data.error);
+                                }
+                            });
+                    }
+                }
+            });
+        }
+
+        // --- UI INITIALIZATION ---
+        // Fetch the semantic locations from the database and populate dropdowns
+        fetch('/api/locations')
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    console.error("Database error:", data.error);
+                    return;
+                }
+
+                const startSelect = document.getElementById('start-node');
+                const endSelect = document.getElementById('end-node');
+
+                data.forEach(location => {
+                    // Create duplicate options for both dropdowns. 
+                    startSelect.add(new Option(location.name, location.node_id));
+                    endSelect.add(new Option(location.name, location.node_id));
+                });
+            })
+            .catch(err => console.error("Failed to fetch locations:", err));
+
+        // --- ROUTING ENGINE RENDERER ---
+
+        var activeRouteLayer = null; // Tracks the blue line so we can clear it
+
+        document.getElementById('find-route-btn').addEventListener('click', function () {
+            var startId = document.getElementById('start-node').value;
+            var endId = document.getElementById('end-node').value;
+
+            if (!startId || !endId) {
+                alert("You must provide both a Start and End Node ID.");
+                return;
+            }
+
+            document.getElementById('route-output').innerText = "Calculating...";
+
+            fetch('/api/route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_node: startId, end_node: endId })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('route-output').innerText = "Error: " + data.error;
+                        return;
+                    }
+
+                    // Destroy the previous route line if it exists
+                    if (activeRouteLayer) {
+                        map.removeLayer(activeRouteLayer);
+                    }
+
+                    // Draw the new route path in high-contrast blue
+                    activeRouteLayer = L.polyline(data.coordinates, {
+                        color: '#007bff',
+                        weight: 6,
+                        opacity: 0.9,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(map);
+
+                    // Force the map camera to zoom and fit the entire route on screen
+                    map.fitBounds(activeRouteLayer.getBounds(), { padding: [50, 50] });
+
+                    // Display the mathematical output
+                    document.getElementById('route-output').innerText =
+                        "Distance: " + data.distance_meters + " meters\\n" +
+                        "Nodes Traversed: " + data.path_sequence.length;
+                })
+                .catch(err => {
+                    document.getElementById('route-output').innerText = "Network Error.";
+                    console.error(err);
+                });
+        });
+    </script>
+</body>
+
+</html>

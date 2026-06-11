@@ -59,6 +59,21 @@ The backend routing engine does not rely on external APIs like Google Maps. Inst
 ### The Haversine Formula
 Because the Earth is a sphere, we cannot calculate distance using standard flat-plane geometry (Pythagorean theorem). The backend uses the **Haversine Formula** to calculate the great-circle distance between two GPS coordinates (Latitude/Longitude), providing highly accurate meter-based edge weights for the algorithm.
 
+To determine the great-circle distance between two coordinate points on a spherical surface (Latitude and Longitude), the routing engine computes the following mathematical operations:
+
+Given two points $(\text{lat}_1, \text{lon}_1)$ and $(\text{lat}_2, \text{lon}_2)$, we first convert the coordinates from degrees to radians:
+$$\Delta \phi = \text{rad}(\text{lat}_2 - \text{lat}_1)$$
+$$\Delta \lambda = \text{rad}(\text{lon}_2 - \text{lon}_1)$$
+
+The square of the half-chord length between the points ($a$) is calculated as:
+$$a = \sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1) \cdot \cos(\phi_2) \cdot \sin^2\left(\frac{\Delta \lambda}{2}\right)$$
+
+The angular distance in radians ($c$) is then computed using the central angle:
+$$c = 2 \cdot \operatorname{atan2}\left(\sqrt{a}, \sqrt{1-a}\right)$$
+
+Finally, the physical distance ($d$) in meters is resolved by multiplying with the Earth's mean radius ($R = 6,371,000\text{ m}$):
+$$d = R \cdot c$$
+
 
 ## 📚 Technology Stack & Libraries
 
@@ -140,81 +155,3 @@ Noven Miletano Argani Herlambang (Camilio).
 Incoming Computer Science Student (IUP) at Universitas Gadjah Mada (UGM).
 
 Developed as a final project submission for CS50x. Special thanks to David J. Malan, Brian Yu, and the Harvard CS50 staff.
-=======
-# MapUS
-#### Video Demo: [https://youtu.be/KWc-SZ-gAXY] (https://youtu.be/KWc-SZ-gAXY)
-#### Description: 
-MapUS is a Flask-based campus navigation application built for Universitas Gadjah Mada (UGM). It uses a graph model and Dijkstra's algorithm to compute the shortest walking route between campus locations, then renders the result with Leaflet.js.
-
-Then open the public interface at:
-
-```
-https://lucaacamilioo.pythonanywhere.com/
-```
-
-<img width="1919" alt="ui" src="ui.png" />
-
-
-## Features
-
-- Public map interface with search and fast access points
-- Route calculation endpoint using campus graph data
-- Walking distance and time estimates
-- Admin dashboard for adding nodes and edges to the campus map
-- SQLite database storage for nodes, edges, and location metadata
-- HTTP Basic authentication for administration
-- Rate limiting to prevent abuse
-
-## Project Structure
-
-- `app.py` - Flask application with public UI, route API, admin APIs, and authentication
-- `helpers.py` - Graph, Dijkstra, distance calculation, and graph construction utilities
-- `requirements.txt` - Python dependencies
-- `templates/` - HTML templates for public and admin pages
-- `static/` - CSS and JavaScript files for frontend behavior and styling
-- `.env` - environment variables for admin credentials
-
-## Requirements
-
-- Python 3.8+
-- Flask
-- Flask-Session
-- Flask-HTTPAuth
-- Flask-Limiter
-- python-dotenv
-- cs50
-- requests
-
-## Setup
-
-1. Create and activate a Python virtual environment.
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Running the App
-
-Start the Flask application with:
-
-```bash
-python app.py
-```
-
-or
-
-```bash
-flask run
-```
-
-## Notes
-
-- The admin interface requires HTTP Basic authentication using values from `.env`.
-- Node and edge insertion is managed through the admin dashboard and saved in SQLite.
-- The public route API returns route coordinates and walking time estimates for frontend mapping.
-
-## License
-
-This project was created as a final project for CS50. Feel free to adapt it for personal learning or campus navigation prototypes.
->>>>>>> origin/main

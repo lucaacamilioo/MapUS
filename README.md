@@ -62,16 +62,20 @@ Because the Earth is a sphere, we cannot calculate distance using standard flat-
 To determine the great-circle distance between two coordinate points on a spherical surface (Latitude and Longitude), the routing engine computes the following mathematical operations:
 
 Given two points $(\text{lat}_1, \text{lon}_1)$ and $(\text{lat}_2, \text{lon}_2)$, we first convert the coordinates from degrees to radians:
+
 $$\Delta \phi = \text{rad}(\text{lat}_2 - \text{lat}_1)$$
 $$\Delta \lambda = \text{rad}(\text{lon}_2 - \text{lon}_1)$$
 
 The square of the half-chord length between the points ($a$) is calculated as:
+
 $$a = \sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1) \cdot \cos(\phi_2) \cdot \sin^2\left(\frac{\Delta \lambda}{2}\right)$$
 
 The angular distance in radians ($c$) is then computed using the central angle:
+
 $$c = 2\arctan2(\sqrt{a}, \sqrt{1-a})$$
 
 Finally, the physical distance ($d$) in meters is resolved by multiplying with the Earth's mean radius ($R = 6,371,000\text{ m}$):
+
 $$d = R \cdot c$$
 
 

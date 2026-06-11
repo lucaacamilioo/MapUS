@@ -9,6 +9,9 @@ Then open the public interface at:
 https://lucaacamilioo.pythonanywhere.com/
 ```
 
+<img width="1919" alt="ui" src="ui.png" />
+
+
 ## Features
 
 - Public map interface with search and fast access points

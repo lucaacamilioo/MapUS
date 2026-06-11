@@ -69,7 +69,7 @@ The square of the half-chord length between the points ($a$) is calculated as:
 $$a = \sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1) \cdot \cos(\phi_2) \cdot \sin^2\left(\frac{\Delta \lambda}{2}\right)$$
 
 The angular distance in radians ($c$) is then computed using the central angle:
-$$c = 2 \cdot \operatorname{atan2}\left(\sqrt{a}, \sqrt{1-a}\right)$$
+$$c = 2\arctan2(\sqrt{a}, \sqrt{1-a})$$
 
 Finally, the physical distance ($d$) in meters is resolved by multiplying with the Earth's mean radius ($R = 6,371,000\text{ m}$):
 $$d = R \cdot c$$

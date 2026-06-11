@@ -1,6 +1,13 @@
 # MapUS
-
+#### Video Demo: [https://youtu.be/KWc-SZ-gAXY] (https://youtu.be/KWc-SZ-gAXY)
+#### Description: 
 MapUS is a Flask-based campus navigation application built for Universitas Gadjah Mada (UGM). It uses a graph model and Dijkstra's algorithm to compute the shortest walking route between campus locations, then renders the result with Leaflet.js.
+
+Then open the public interface at:
+
+```
+https://lucaacamilioo.pythonanywhere.com/
+```
 
 ## Features
 
@@ -56,12 +63,6 @@ Start the Flask application with:
 
 ```bash
 python app.py
-```
-
-Then open the public interface at:
-
-```
-https://lucaacamilioo.pythonanywhere.com/
 ```
 
 ## Notes

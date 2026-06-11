@@ -48,21 +48,18 @@ https://lucaacamilioo.pythonanywhere.com/
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the project root with admin credentials:
-
-```text
-ADMIN_USERNAME=<your username>
-ADMIN_PASSWORD=<your password>
-```
-
-4. Prepare the SQLite database file `mapus.db` in the project root with the expected tables: `nodes`, `edges`, and `locations`.
-
 ## Running the App
 
 Start the Flask application with:
 
 ```bash
 python app.py
+```
+
+or
+
+```bash
+flask run
 ```
 
 ## Notes
